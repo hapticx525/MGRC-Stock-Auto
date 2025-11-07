@@ -2,7 +2,7 @@ name: Daily Bursa Scrape
 
 on:
   schedule:
-    - cron: '0 12 * * 1-5'   # 8 PM Malaysia time (12:00 UTC)
+    - cron: '0 12 * * 1-5'   # 8 PM Malaysia Time
   workflow_dispatch:
 
 jobs:
@@ -23,12 +23,10 @@ jobs:
       - name: Run scraper
         run: python everydayPrice.py
 
-            - name: Commit and push changes
+      - name: Commit and push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add everydayPrice.txt
           git commit -m "Auto update from Bursa $(date +'%Y-%m-%d')" || echo "No changes to commit"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
-
-
