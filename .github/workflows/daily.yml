@@ -1,0 +1,32 @@
+name: Daily Bursa Scrape
+
+on:
+  schedule:
+    - cron: '0 12 * * 1-5'   # 8 PM Malaysia time (12:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run scraper
+        run: python everydayPrice.py
+
+      - name: Commit updated file
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add everydayPrice.txt
+          git commit -m "Auto update from Bursa" || echo "No changes"
+          git push
