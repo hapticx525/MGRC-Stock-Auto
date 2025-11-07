@@ -1,4 +1,5 @@
 import requests
+from bs4 import BeautifulSoup
 from datetime import datetime
 import os
 
@@ -6,45 +7,43 @@ FILE = "everydayPrice.txt"
 HEADER = "Date,Open,High,Low,Close,Volume,Change,Percentage Change,Day Range,Year Range\n"
 
 def fetch_latest_data():
-    print("Fetching live MGRC data from Bursa Malaysia JSON API…")
-    url = "https://www.bursamalaysia.com/market_information/stock_prices?format=json"
+    print("🔍 Fetching live MGRC data from Bursa Malaysia (stock_prices_main.jsp)...")
+    url = "https://www.bursamalaysia.com/market_information/stock_prices_main.jsp?stock_code=0155"
     r = requests.get(url, timeout=30)
     r.raise_for_status()
-    data = r.json()
+    soup = BeautifulSoup(r.text, "html.parser")
 
-    # Find MGRC (0155)
-    stock = None
-    for s in data.get("quotes", []):
-        if s.get("stock_code") == "0155":
-            stock = s
-            break
+    # find all <td> inside price table
+    cells = [c.text.strip() for c in soup.find_all("td")]
+    if not cells or len(cells) < 10:
+        raise Exception("⚠️ Unable to parse Bursa page structure. HTML changed or market closed.")
 
-    if not stock:
-        raise Exception("MGRC (0155) not found in Bursa feed")
-
-    # Extract fields
-    today = datetime.today().strftime("%d/%m/%Y")
-    open_ = stock.get("open_price", "0.000")
-    high = stock.get("high_price", "0.000")
-    low = stock.get("low_price", "0.000")
-    close = stock.get("last_done_price", "0.000")
-    volume = stock.get("volume", "0")
-    change = stock.get("change", "0.000")
-    pct = stock.get("percentage_change", "0.00%")
+    # Extract key data points
+    stock_name = cells[0]
+    last_done = cells[1]
+    change = cells[2]
+    pct_change = cells[3]
+    volume = cells[4]
+    open_price = cells[5]
+    high = cells[6]
+    low = cells[7]
     day_range = f"{low}-{high}"
-    year_range = f"{stock.get('fifty_two_week_low', '-')}-{stock.get('fifty_two_week_high', '-')}"
+
+    today = datetime.today().strftime("%d/%m/%Y")
+
+    print(f"📊 {stock_name}: {last_done} ({change}, {pct_change})")
 
     return {
         "Date": today,
-        "Open": open_,
+        "Open": open_price,
         "High": high,
         "Low": low,
-        "Close": close,
-        "Volume": volume,
+        "Close": last_done,
+        "Volume": volume.replace(",", ""),
         "Change": change,
-        "Pct": pct,
+        "Pct": pct_change,
         "DayRange": day_range,
-        "YearRange": year_range
+        "YearRange": "-",  # not available on this endpoint
     }
 
 def update_file(row):
